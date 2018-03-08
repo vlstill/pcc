@@ -13,4 +13,5 @@ TEST_CASE( "PCC example" ) {
         // a and b will be randomly generated
         REQUIRE( a == 0 ); // this will fail
     } );
+}
 ```
