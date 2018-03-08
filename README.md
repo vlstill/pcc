@@ -3,7 +3,7 @@
 Header-only library for property checking in C++17 with the
 [Catch2](https://github.com/catchorg/Catch2) unit testing framework.
 
-```{.cpp}
+```c++
 #include <catch.hpp>
 #include <pcc.hpp>
 
