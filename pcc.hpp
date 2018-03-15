@@ -66,15 +66,6 @@ struct config
 
 struct skip_test { };
 
-template< auto fn >
-struct fun
-{
-    template< typename... Args >
-    decltype(auto) operator()( Args &&... args ) {
-        return std::invoke( fn, std::forward< Args >( args )... );
-    }
-};
-
 template< typename T >
 struct witness { using type = T; };
 
