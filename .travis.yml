@@ -1,0 +1,40 @@
+language: cpp
+
+
+script:
+    - CXX=$T_CXX
+    - CC=$T_CC
+    - $CXX --version
+    - which $CXX
+    - ls /usr/include/c++
+    - mkdir _build
+    - cd _build
+    - cmake .. -DCMAKE_CXX_FLAGS="$CXXFLAGS"
+    - make pcc_run
+
+notifications:
+  email:
+    recipients:
+      - xstill@fi.muni.cz
+    on_success: change # default: change
+    on_failure: always # default: always
+
+sudo: false
+
+matrix:
+  include:
+    - env:
+        - T_CC=gcc-7
+        - T_CXX=g++-7
+    - env:
+        - T_CC=/usr/local/clang-5.0.0/bin/clang
+        - T_CXX=/usr/local/clang-5.0.0/bin/clang++
+        - CXXFLAGS="-isystem /usr/include/c++/7.*"
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - cmake
+      - g++-7
