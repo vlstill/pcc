@@ -335,6 +335,83 @@ auto shrink( witness< std::vector< T > > ) {
     };
 }
 
+namespace hash {
+
+size_t combine( size_t a, size_t b ) {
+    return a ^ (b + 0x9e3779b9 + (a << 6) + (a >> 2));
+}
+
+template< typename T >
+struct hasher : std::hash< T > { };
+
+template< typename... Args >
+struct hasher< std::tuple< Args... > >
+{
+    static constexpr size_t arity = sizeof...( Args );
+
+    size_t operator()( const std::tuple< Args... > &v ) const {
+        return std::apply( [&]( auto... idxs ) {
+                std::array< size_t, arity > hashes = { {
+                    std::get< idxs.value >( _hashers )( std::get< idxs.value >( v ) )... } };
+                return std::accumulate( hashes.begin(), hashes.end(), 0, combine );
+            },
+            detail::index_tuple< Args... >() );
+    }
+
+    std::tuple< hasher< Args >... > _hashers;
+};
+
+}
+
+template< typename >
+struct fun;
+
+template< typename R, typename... Args >
+struct fun< R ( Args... ) >
+{
+    using tuple = std::tuple< Args... >;
+    using table = std::unordered_map< tuple, R, hash::hasher< tuple > >;
+
+    fun( R def, table tab ) : _def( def ), _table( tab ) { }
+
+    R operator()( const Args &...args ) {
+        if ( auto it = _table.find( std::tuple( args... ) ); it != _table.end() )
+            return it->second;
+        return _def;
+    }
+
+  private:
+    friend struct Catch::StringMaker< pcc::fun< R( Args... ) > >;
+    R _def;
+    table _table;
+};
+
+template< typename R, typename... Args,
+          typename = std::void_t< decltype( arbitrary< R >() ),
+                                  decltype( arbitrary< Args >() )...,
+                                  decltype( std::hash< Args >() )... > >
+auto arbitrary( witness< fun< R ( Args... ) > > ) {
+    return []( generator &g ) {
+        auto ar = arbitrary< R >();
+        using F = fun< R ( Args ... ) >;
+        using Tup = typename F::tuple;
+        using Tab = typename F::table;
+        auto at = arbitrary< Tup >();
+        hash::hasher< Tup > hash;
+        Tab table;
+
+        for ( size_t i = 0; i < g.size; ++i ) {
+            auto in = at( g );
+            auto h = hash( in );
+            g.seed( hash::combine( h, g() ) );
+            auto r = ar( g );
+            table[ in ] = r;
+        }
+
+        return fun< R ( Args... ) >( ar( g ), std::move( table ) );
+    };
+}
+
 template< typename Property >
 void run_test( Property prop, config conf ) {
     auto g = conf.get_rng();
@@ -416,6 +493,20 @@ namespace Catch {
         static std::string convert( const std::pair< A, B > &value ) {
             std::stringstream ss;
             pcc::detail::TupleToString::run( value, ss );
+            return ss.str();
+        }
+    };
+
+    template< typename R, typename... Args >
+    struct StringMaker< pcc::fun< R( Args... ) > > {
+        static std::string convert( const pcc::fun< R( Args... ) > f ) {
+            std::stringstream ss;
+            ss << "{";
+            for ( auto & [args, v] : f._table ) {
+                ss << StringMaker< std::decay_t< decltype( args ) > >::convert( args )
+                   << " -> " << StringMaker< R >::convert( v ) << ", ";
+            }
+            ss << "_ -> " << StringMaker< R >::convert( f._def ) << "}";
             return ss.str();
         }
     };

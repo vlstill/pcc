@@ -91,3 +91,9 @@ TEST_CASE( "custom" ) {
             REQUIRE( c.c );
         } );
 }
+
+TEST_CASE( "fun noncomutative", "[!shouldfail]" ) {
+    pcc::run_test( []( pcc::fun< int( int, int ) > f, int a, int b ) {
+        REQUIRE( f( a, b ) == f( b, a ) );
+    } );
+}
