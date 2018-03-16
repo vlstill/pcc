@@ -451,12 +451,14 @@ namespace detail {
         template< typename... Ts >
         static void run( const std::tuple< Ts... > &t, std::stringstream &ss ) {
             ss << "(";
-            auto dump = [&ss]( const auto &v ) {
+            size_t i = 0;
+            constexpr size_t end = sizeof...( Ts );
+            auto dump = [&]( const auto &v ) {
                 run( v, ss );
-                ss << ", ";
+                if ( ++i != end )
+                    ss << ", ";
             };
             std::apply( [&]( auto &... vals ) { (dump( vals ), ...); }, t );
-            ss.seekp( -2, std::ios_base::end );
             ss << ")";
         }
 
