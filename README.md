@@ -1,5 +1,7 @@
 # Property Checking for Catch2
 
+[![Build Status](https://travis-ci.org/vlstill/pcc.svg?branch=master)](https://travis-ci.org/vlstill/pcc)
+
 Header-only library for property checking in C++17 with the
 [Catch2](https://github.com/catchorg/Catch2) unit testing framework.
 This library is inspire by the great Haskell testing library
