@@ -324,6 +324,10 @@ auto shrink( witness< std::vector< T > > ) {
 
         out.push_back( orig );
         out.back().pop_back();
+        if ( orig.size() > 1 ) {
+            out.push_back( orig );
+            out.back().erase( out.back().begin() );
+        }
         auto shk = shrink< T >();
         for ( size_t i = 0; i < orig.size(); ++i ) {
             for ( auto &v : shk( orig[ i ] ) ) {
