@@ -378,8 +378,8 @@ struct fun< R ( Args... ) >
 
     fun( R def, table tab ) : _def( def ), _table( tab ) { }
 
-    R operator()( const Args &...args ) {
-        if ( auto it = _table.find( std::tuple( args... ) ); it != _table.end() )
+    R operator()( const Args &...args ) const {
+        if ( auto it = _table.find( tuple( args... ) ); it != _table.end() )
             return it->second;
         return _def;
     }
