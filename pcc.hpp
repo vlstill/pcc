@@ -348,6 +348,14 @@ size_t combine( size_t a, size_t b ) {
 template< typename T >
 struct hasher : std::hash< T > { };
 
+template< typename A, typename B >
+struct hasher< std::pair< A, B > >
+{
+    size_t operator()( const std::pair< A, B >& p ) const {
+        return combine( hasher< A >()( p.first ), hasher< B >()( p.second ) );
+    }
+};
+
 template< typename... Args >
 struct hasher< std::tuple< Args... > >
 {
