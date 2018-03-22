@@ -117,6 +117,23 @@ auto shrink() {
 
 namespace detail {
 
+    struct Bool {
+        struct Shrink {
+            std::vector< bool > operator()( bool v ) const {
+                if ( v )
+                    return { false };
+                return { };
+            }
+        };
+
+        struct Arbitrary {
+            bool operator()( generator &g ) const {
+                std::uniform_int_distribution< int > distr( 0, 1 );
+                return distr( g );
+            }
+        };
+    };
+
     template< typename N >
     struct Num {
         struct Shrink {
@@ -244,6 +261,9 @@ namespace detail {
         run_t( witness< std::tuple< Ts... > >(), prop, g, conf );
     }
 } // namespace detail
+
+typename detail::Bool::Arbitrary arbitrary( witness< bool > ) { return { }; }
+typename detail::Bool::Shrink shrink( witness< bool > ) { return { }; }
 
 template< typename I >
 detail::integral_arbitrary< I > arbitrary( witness< I > ) { return { }; }
