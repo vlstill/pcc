@@ -336,6 +336,25 @@ auto arbitrary( witness< std::pair< A, B > > ) {
     };
 }
 
+template< typename A, typename B >
+auto arbitrary( witness< std::map< A, B > > ) {
+    return []( generator g ) {
+        auto vec = pcc::arbitrary< std::vector< std::pair< A, B > > >()( g );
+        return std::map< A, B >( vec.begin(), vec.end() );
+    };
+}
+
+auto arbitrary( witness< std::string > ) {
+    return []( generator g ) {
+        constexpr const char printable_ascii[] = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+        std::string str;
+        str.resize( g.size );
+        for ( char &c : str )
+            c = g.elements( printable_ascii );
+        return str;
+    };
+}
+
 namespace detail {
     template< size_t... Is >
     auto index_tuple( std::index_sequence< Is... > ) {
