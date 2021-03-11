@@ -378,8 +378,8 @@ namespace detail {
 
 template< typename... Ts >
 auto shrink( witness< std::tuple< Ts ... > > ) {
-    std::tuple shrinks( shrink< Ts >()... );
-    return [&shrinks]( const std::tuple< Ts ... > &orig ) {
+    return []( const std::tuple< Ts ... > &orig ) {
+        std::tuple shrinks( shrink< Ts >()... );
         std::vector< std::tuple< Ts ... > > out;
         std::apply( [&]( auto ... idxs ) {
                 (detail::shrink_tuple_part( idxs, orig, out, shrinks ), ...);
