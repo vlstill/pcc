@@ -22,30 +22,64 @@
  */
 
 #include <functional>
-#include <type_traits>
-#include <random>
-#include <vector>
+#include <limits>
+#include <map>
+#include <memory>
 #include <optional>
-#include <tuple>
+#include <random>
 #include <sstream>
+#include <tuple>
+#include <type_traits>
+#include <vector>
 
 #ifndef PCC_HPP
 #define PCC_HPP
 
 namespace pcc {
 
-struct generator : std::mt19937_64
+struct generator
 {
-    using std::mt19937_64::mt19937_64;
+    using result_type = std::mt19937_64::result_type;
 
-    generator( std::mt19937_64::result_type seed, size_t size ) :
-        std::mt19937_64( seed ), size( size )
+    generator( result_type seed, size_t size ) :
+         size( size ), _gen( std::make_shared< std::mt19937_64 >( seed ) )
     { }
 
-    generator( const generator & ) = delete;
-    generator( generator && ) = default;
+    template< typename I >
+    std::enable_if_t< std::is_integral_v< I >, I >
+        choose( I from = std::numeric_limits< I >::min(),
+                I to = std::numeric_limits< I >::max )
+    {
+        return std::uniform_int_distribution< I >( from, to )( *this );
+    }
+
+    template< typename Indexable >
+    auto elements( const Indexable &x ) {
+        using std::size;
+        return x[ choose< size_t >( 0, size( x ) ) ];
+    }
+
+    auto operator()() { return (*_gen)(); }
+    auto min() const { return _gen->min(); }
+    auto max() const { return _gen->max(); }
+
+    void seed( result_type seed ) { _gen->seed( seed ); }
+
+    generator resize_by( ptrdiff_t diff ) {
+        auto copy = *this;
+        copy.size += diff;
+        return copy;
+    }
+
+    generator resize_to( size_t val ) {
+        auto copy = *this;
+        copy.size = val;
+        return copy;
+    }
 
     size_t size = 20;
+  private:
+    std::shared_ptr< std::mt19937_64 > _gen;
 };
 
 struct config
@@ -127,7 +161,7 @@ namespace detail {
         };
 
         struct Arbitrary {
-            bool operator()( generator &g ) const {
+            bool operator()( generator g ) const {
                 std::uniform_int_distribution< int > distr( 0, 1 );
                 return distr( g );
             }
@@ -160,7 +194,7 @@ namespace detail {
     struct Int : Num< I >
     {
         struct Arbitrary {
-            I operator()( generator &g ) const {
+            I operator()( generator g ) const {
                 if ( g.size == 0 )
                     return I();
                 I min = 0;
@@ -177,7 +211,7 @@ namespace detail {
     struct Float : Num< F >
     {
         struct Arbitrary {
-            F operator()( generator &g ) const {
+            F operator()( generator g ) const {
                 if ( g.size == 0 )
                     return F();
                 std::uniform_real_distribution< F > distr( -F( g.size ), F( g.size ) );
@@ -230,7 +264,7 @@ namespace detail {
     }
 
     template< typename T, typename Prop >
-    void run_t( witness< T > w, Prop &prop, generator &g, config &conf ) {
+    void run_t( witness< T > w, Prop &prop, generator g, config &conf ) {
         auto gen = arbitrary< T >();
         T args = gen( g );
         CAPTURE( args );
@@ -247,17 +281,17 @@ namespace detail {
     }
 
     template< typename Cls, typename R, typename... Ts, typename Prop >
-    void run( witness< R (Cls::*)( Ts... ) >, Prop &prop, generator &g, config &conf ) {
+    void run( witness< R (Cls::*)( Ts... ) >, Prop &prop, generator g, config &conf ) {
         run_t( witness< std::tuple< Ts... > >(), prop, g, conf );
     }
 
     template< typename Cls, typename R, typename... Ts, typename Prop >
-    void run( witness< R (Cls::*)( Ts... ) const >, Prop &prop, generator &g, config &conf ) {
+    void run( witness< R (Cls::*)( Ts... ) const >, Prop &prop, generator g, config &conf ) {
         run_t( witness< std::tuple< Ts... > >(), prop, g, conf );
     }
 
     template< typename R, typename... Ts, typename Prop >
-    void run( witness< R (*)( Ts... ) >, Prop &prop, generator &g, config &conf ) {
+    void run( witness< R (*)( Ts... ) >, Prop &prop, generator g, config &conf ) {
         run_t( witness< std::tuple< Ts... > >(), prop, g, conf );
     }
 } // namespace detail
@@ -289,14 +323,14 @@ auto arbitrary( witness< std::vector< T > > ) {
 
 template< typename... Ts >
 auto arbitrary( witness< std::tuple< Ts... > > ) {
-    return []( generator &g ) {
+    return []( generator g ) {
         return std::tuple< Ts... >{ arbitrary< Ts >()( g )... };
     };
 }
 
 template< typename A, typename B >
 auto arbitrary( witness< std::pair< A, B > > ) {
-    return []( generator &g ) {
+    return []( generator g ) {
         return std::pair< A, B >{ arbitrary< A >()( g ),
                                   arbitrary< B >()( g ) };
     };
@@ -423,7 +457,7 @@ template< typename R, typename... Args,
                                   decltype( arbitrary< Args >() )...,
                                   decltype( std::hash< Args >() )... > >
 auto arbitrary( witness< fun< R ( Args... ) > > ) {
-    return []( generator &g ) {
+    return []( generator g ) {
         auto ar = arbitrary< R >();
         using F = fun< R ( Args ... ) >;
         using Tup = typename F::tuple;
