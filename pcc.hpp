@@ -309,12 +309,12 @@ detail::floating_arbitrary< F > arbitrary( witness< F > ) { return { }; }
 template< typename F >
 detail::floating_shrink< F > shrink( witness< F > ) { return { }; }
 
-template< typename T, typename = decltype( arbitrary< T >() ) >
+template< typename T > // typename = decltype( arbitrary< T >() ) >
 auto arbitrary( witness< std::vector< T > > ) {
-    return []( generator &g ) {
+    return []( generator g ) {
         auto inner = arbitrary< T >();
         std::vector< T > vec;
-        vec.reserve( g.size );
+        vec.reserve( g.choose( size_t( 0 ), g.size ) );
         for ( size_t i = 0; i < vec.capacity(); ++i )
             vec.emplace_back( inner( g ) );
         return vec;
